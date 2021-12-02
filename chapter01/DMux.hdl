@@ -1,9 +1,9 @@
-CHIP Demultiplexor{
+CHIP DMux{
     IN in,sel;
     OUT a,b;
 
     PARTS:
-    Not(a=sel,out=notSel);
+    Not(in=sel,out=notSel);
     And(a=in,b=notSel,out=a);
     And(a=in,b=sel,out=b);
 }
