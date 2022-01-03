@@ -1,11 +1,19 @@
 package com.example.demo;
 
+import org.apache.commons.io.FilenameUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AssemblerImplTest {
     /**
@@ -50,8 +58,12 @@ public class AssemblerImplTest {
      **/
     @Test
     public void test_assemble_given_cmdWithVariable_when_convert_then_binary() throws IOException {
-        String source = "@i" + System.lineSeparator() + "M=1" + System.lineSeparator() + "@sum" + System.lineSeparator() + "M=0" + System.lineSeparator() + "@100" + System.lineSeparator() + "@sum";
-        String expected = "0000000000010000" + System.lineSeparator() + "1110111111001000" + System.lineSeparator() + "0000000000010001" + System.lineSeparator() + "1110101010001000" + System.lineSeparator() + "0000000001100100" + System.lineSeparator() + "0000000000010001" + System.lineSeparator();
+        String source = "@i" + System.lineSeparator()
+                + "@2" + System.lineSeparator()
+                + "M=1" + System.lineSeparator() + "@sum" + System.lineSeparator() + "M=0" + System.lineSeparator() + "@100" + System.lineSeparator() + "@sum";
+        String expected = "0000000000010000" + System.lineSeparator()
+                + "0000000000000010" + System.lineSeparator()
+                + "1110111111001000" + System.lineSeparator() + "0000000000010001" + System.lineSeparator() + "1110101010001000" + System.lineSeparator() + "0000000001100100" + System.lineSeparator() + "0000000000010001" + System.lineSeparator();
 
         AssemblerImpl assembler = new AssemblerImpl();
         ByteArrayInputStream ins = new ByteArrayInputStream(source.getBytes());
@@ -144,8 +156,7 @@ public class AssemblerImplTest {
                 + "0000000000001110" + System.lineSeparator()
                 + "0000000000001111" + System.lineSeparator()
                 + "0100000000000000" + System.lineSeparator()
-                + "0110000000000000" + System.lineSeparator()
-                ;
+                + "0110000000000000" + System.lineSeparator();
 
         AssemblerImpl assembler = new AssemblerImpl();
         ByteArrayInputStream ins = new ByteArrayInputStream(source.getBytes());
@@ -154,5 +165,52 @@ public class AssemblerImplTest {
 
         String res = outs.toString();
         Assert.assertEquals(expected, res);
+    }
+
+    /**
+     * @provided the source file ins
+     * @expected the binary match cmp file
+     **/
+    @Test
+    public void test_assemble_given_sourceFile_when_convert_then_binary() throws IOException {
+        URL resource = getClass().getClassLoader().getResource("asm");
+        assert resource != null;
+        String path = resource.getPath();
+        System.out.println(path);
+        File[] files = new File(path).listFiles();
+        List<String> sourceList = new ArrayList<>();
+        assert files != null;
+        for (File file : files) {
+            if (!file.getName().endsWith(".asm")) {
+                continue;
+            }
+            sourceList.add(file.getPath());
+        }
+        for (String file : sourceList) {
+            ByteArrayOutputStream outs = new ByteArrayOutputStream();
+            new AssemblerImpl().assemble(new FileInputStream(file), outs);
+            String binary = outs.toString();
+            outs.close();
+            String cmpFile = FilenameUtils.removeExtension(file) + ".cmp";
+            String expected = readStringFromFile(cmpFile);
+            System.out.println("convert file:" + file);
+            Assert.assertEquals(expected, binary);
+        }
+    }
+
+    private String readStringFromFile(String cmpFile) throws IOException {
+        BufferedReader reader = new BufferedReader(new FileReader(cmpFile));
+        String line = null;
+        StringBuilder builder = new StringBuilder();
+        while (true) {
+            line = reader.readLine();
+            if (line == null) {
+                break;
+            }
+            builder.append(line)
+                    .append(System.lineSeparator());
+        }
+        reader.close();
+        return builder.toString();
     }
 }

@@ -50,11 +50,11 @@ public class ParserImplTest {
      **/
     @Test(expected = RuntimeException.class)
     public void test_commandType_given_comments_when_getCmd_then_exception() {
-        String builder = "//this is comment";
+        String builder = "//b=a+c";
         ByteArrayInputStream ins = new ByteArrayInputStream(builder.getBytes());
         ParserImpl parser = new ParserImpl(ins);
         parser.advance();
-        CommandType cmd = parser.commandType();
+        parser.commandType();
     }
 
     /**

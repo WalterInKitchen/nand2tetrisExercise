@@ -16,13 +16,13 @@ public enum CommandType {
 
         @Override
         public String parseSymbol(String cmd) {
-            return cmd.substring(1);
+            return cmd.trim().substring(1);
         }
     }, CONTROL_CMD() {
-        private final Pattern patternWithoutJump = Pattern.compile("(.*?)=(.*?)");
-        private final Pattern patternWithoutDest = Pattern.compile("(.*?);(.*?)");
-        private final Pattern pattern = Pattern.compile("(.*?)=(.*?);(.*?)");
-        private final Pattern patternFocusDest = Pattern.compile(".*?=.*?");
+        private final Pattern patternWithoutJump = Pattern.compile("(.*?)=(.*?)(//.*)?");
+        private final Pattern patternWithoutDest = Pattern.compile("(.*?);(.*?)(//.*)?");
+        private final Pattern pattern = Pattern.compile("(.*?)=(.*?);(.*?)(//.*)?");
+        private final Pattern patternFocusDest = Pattern.compile(".*?=.*?(//.*)?");
         private final Set<String> destSet = new HashSet<>(Arrays.asList("M", "D", "MD", "A", "AM", "AD", "AMD"));
         private final Set<String> jumpSet = new HashSet<>(Arrays.asList("JGT", "JEQ", "JGE", "JLT", "JNE", "JLE", "JMP"));
 
@@ -42,9 +42,9 @@ public enum CommandType {
             if (!patternFocusDest.matcher(cmd).matches()) {
                 return "null";
             }
-            String dest = cmd.substring(0, cmd.indexOf("="));
+            String dest = cmd.substring(0, cmd.indexOf("=")).trim();
             if (destSet.contains(dest)) {
-                return dest.toUpperCase(Locale.US);
+                return dest.trim().toUpperCase(Locale.US);
             }
             return "null";
         }
@@ -53,15 +53,15 @@ public enum CommandType {
         public String parseComp(String cmd) {
             Matcher matcher = pattern.matcher(cmd);
             if (matcher.matches()) {
-                return matcher.group(2);
+                return matcher.group(2).trim();
             }
             Matcher matcherWithoutDest = patternWithoutDest.matcher(cmd);
             if (matcherWithoutDest.matches()) {
-                return matcherWithoutDest.group(1);
+                return matcherWithoutDest.group(1).trim();
             }
             Matcher matcherWithoutJump = patternWithoutJump.matcher(cmd);
             if (matcherWithoutJump.matches()) {
-                return matcherWithoutJump.group(2);
+                return matcherWithoutJump.group(2).trim();
             }
             throw new RuntimeException("there's no comp part in cmd:" + cmd);
         }
@@ -70,17 +70,17 @@ public enum CommandType {
         public String parseJump(String cmd) {
             Matcher matcher = pattern.matcher(cmd);
             if (matcher.matches()) {
-                return convertJumToSymbol(matcher.group(3));
+                return convertJumToSymbol(matcher.group(3)).trim();
             }
             Matcher matcherWithoutDest = patternWithoutDest.matcher(cmd);
             if (matcherWithoutDest.matches()) {
-                return convertJumToSymbol(matcherWithoutDest.group(2));
+                return convertJumToSymbol(matcherWithoutDest.group(2)).trim();
             }
             return "null";
         }
 
         private String convertJumToSymbol(String symbol) {
-            String upSym = symbol.toUpperCase(Locale.US);
+            String upSym = symbol.toUpperCase(Locale.US).trim();
             if (jumpSet.contains(upSym)) {
                 return upSym;
             }
@@ -96,7 +96,7 @@ public enum CommandType {
 
         @Override
         public String parseSymbol(String cmd) {
-            return cmd.substring(1, cmd.length() - 1);
+            return cmd.trim().substring(1, cmd.length() - 1);
         }
     };
 

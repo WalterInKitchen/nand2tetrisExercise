@@ -40,7 +40,10 @@ public class ParserImpl implements Parser {
     @Override
     public CommandType commandType() {
         for (CommandType value : CommandType.values()) {
-            if (value.match(this.currentLine)) {
+            if (this.currentLine.trim().startsWith("//")) {
+                continue;
+            }
+            if (value.match(this.currentLine.trim())) {
                 return value;
             }
         }
