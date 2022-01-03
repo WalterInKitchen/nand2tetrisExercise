@@ -45,6 +45,19 @@ public class ParserImplTest {
     }
 
     /**
+     * @provided comments
+     * @expected exception
+     **/
+    @Test(expected = RuntimeException.class)
+    public void test_commandType_given_comments_when_getCmd_then_exception() {
+        String builder = "//this is comment";
+        ByteArrayInputStream ins = new ByteArrayInputStream(builder.getBytes());
+        ParserImpl parser = new ParserImpl(ins);
+        parser.advance();
+        CommandType cmd = parser.commandType();
+    }
+
+    /**
      * @provided the address cmd and advance invoked
      * @expected the address cmd type
      **/

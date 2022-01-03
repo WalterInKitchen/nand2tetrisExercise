@@ -18,18 +18,13 @@ public enum CommandType {
         public String parseSymbol(String cmd) {
             return cmd.substring(1);
         }
-    },
-    CONTROL_CMD() {
+    }, CONTROL_CMD() {
         private final Pattern patternWithoutJump = Pattern.compile("(.*?)=(.*?)");
         private final Pattern patternWithoutDest = Pattern.compile("(.*?);(.*?)");
         private final Pattern pattern = Pattern.compile("(.*?)=(.*?);(.*?)");
         private final Pattern patternFocusDest = Pattern.compile(".*?=.*?");
-        private final Set<String> destSet = new HashSet<>(
-                Arrays.asList("M", "D", "MD", "A", "AM", "AD", "AMD")
-        );
-        private final Set<String> jumpSet = new HashSet<>(
-                Arrays.asList("JGT", "JEQ", "JGE", "JLT", "JNE", "JLE", "JMP")
-        );
+        private final Set<String> destSet = new HashSet<>(Arrays.asList("M", "D", "MD", "A", "AM", "AD", "AMD"));
+        private final Set<String> jumpSet = new HashSet<>(Arrays.asList("JGT", "JEQ", "JGE", "JLT", "JNE", "JLE", "JMP"));
 
         @Override
         public boolean match(String cmd) {
@@ -91,8 +86,7 @@ public enum CommandType {
             }
             return "null";
         }
-    },
-    LOCATION_CMD() {
+    }, LOCATION_CMD() {
         private final Pattern pattern = Pattern.compile("\\(.*\\)");
 
         @Override

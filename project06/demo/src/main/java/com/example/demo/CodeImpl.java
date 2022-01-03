@@ -2,14 +2,9 @@ package com.example.demo;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class CodeImpl implements Code {
-    private static final Pattern PATTERN_FULL = Pattern.compile("(.*?)=(.*?);(.*?)");
-    private static final Pattern PATTERN_NO_JUMP = Pattern.compile("(.*?)=(.*?)");
-    private static final Pattern PATTERN_NO_DEST = Pattern.compile("(.*?);(.*?)");
-
     private static final Map<String, String> DEST_MAP = new HashMap<String, String>() {{
         put("M", "001");
         put("D", "010");
@@ -64,45 +59,16 @@ public class CodeImpl implements Code {
 
     @Override
     public String dest(String source) {
-        Matcher matcher = PATTERN_NO_JUMP.matcher(source);
-        if (!matcher.matches()) {
-            return "000";
-        }
-        String dest = matcher.group(1);
-        return DEST_MAP.getOrDefault(dest, "000");
+        return DEST_MAP.getOrDefault(source, "000");
     }
 
     @Override
     public String comp(String source) {
-        Matcher matcherFull = PATTERN_FULL.matcher(source);
-        if (matcherFull.matches()) {
-            return COMP_MAP.getOrDefault(matcherFull.group(2), null);
-        }
-        Matcher matcherJump = PATTERN_NO_JUMP.matcher(source);
-        if (matcherJump.matches()) {
-            return COMP_MAP.getOrDefault(matcherJump.group(2), null);
-        }
-        Matcher matcherDest = PATTERN_NO_DEST.matcher(source);
-        if (matcherDest.matches()) {
-            return COMP_MAP.get(matcherDest.group(1));
-        }
-        return null;
+        return COMP_MAP.getOrDefault(source, null);
     }
 
     @Override
     public String jump(String source) {
-        Matcher matcherFull = PATTERN_FULL.matcher(source);
-        if (matcherFull.matches()) {
-            return JUMP_MAP.getOrDefault(matcherFull.group(3), null);
-        }
-        Matcher matcherJump = PATTERN_NO_JUMP.matcher(source);
-        if (matcherJump.matches()) {
-            return "000";
-        }
-        Matcher matcherDest = PATTERN_NO_DEST.matcher(source);
-        if (matcherDest.matches()) {
-            return JUMP_MAP.get(matcherDest.group(2));
-        }
-        return "000";
+        return JUMP_MAP.getOrDefault(source, "000");
     }
 }
