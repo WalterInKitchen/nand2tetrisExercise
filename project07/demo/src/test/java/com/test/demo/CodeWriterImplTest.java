@@ -36,8 +36,10 @@ public class CodeWriterImplTest {
         String res = outs.toString();
         String expected = "@0" + System.lineSeparator()
                 + "D=A" + System.lineSeparator()
-                + "@256" + System.lineSeparator()
-                + "M=D" + System.lineSeparator();
+                + "@SP" + System.lineSeparator()
+                + "M=D" + System.lineSeparator()
+                + "@SP" + System.lineSeparator()
+                + "M=M+1" + System.lineSeparator();
         Assert.assertEquals(expected, res);
     }
 
@@ -55,12 +57,16 @@ public class CodeWriterImplTest {
         String res = outs.toString();
         String expected = "@0" + System.lineSeparator()
                 + "D=A" + System.lineSeparator()
-                + "@256" + System.lineSeparator()
+                + "@SP" + System.lineSeparator()
                 + "M=D" + System.lineSeparator()
+                + "@SP" + System.lineSeparator()
+                + "M=M+1" + System.lineSeparator()
                 + "@1" + System.lineSeparator()
                 + "D=A" + System.lineSeparator()
-                + "@257" + System.lineSeparator()
-                + "M=D" + System.lineSeparator();
+                + "@SP" + System.lineSeparator()
+                + "M=D" + System.lineSeparator()
+                + "@SP" + System.lineSeparator()
+                + "M=M+1" + System.lineSeparator();
         Assert.assertEquals(expected, res);
     }
 
@@ -71,7 +77,7 @@ public class CodeWriterImplTest {
      * @expected RuntimeException
      **/
     @Test(expected = RuntimeException.class)
-    public void whenPushOneWhenStackIsFullThenRuntimeException() throws IOException {
+    public void whenStackIsFullThenPushOneThrowRuntimeException() throws IOException {
         boolean expected = false;
         try {
             int stackSize = 2047 - 256 + 1;
@@ -89,4 +95,29 @@ public class CodeWriterImplTest {
             Assert.assertTrue(expected);
         }
     }
+
+    /**
+     * 空栈，push局部变量应该放在栈顶
+     *
+     * @provided empty stack
+     * @expected variable in the top of stack
+     **/
+    @Test
+    public void whenStackIsEmptyThenPushLocalWillSetIntoTopStack() throws IOException {
+        codeWriter.writePushPop("push", "local", 10);
+        codeWriter.close();
+        String res = outs.toString();
+        String expected = "@10" + System.lineSeparator() +
+                "D=A" + System.lineSeparator() +
+                "@LCL" + System.lineSeparator() +
+                "A=D+M" + System.lineSeparator() +  //LCL+10
+                "D=M" + System.lineSeparator() +
+                "@SP" + System.lineSeparator() +
+                "M=D" + System.lineSeparator() +
+                "@SP" + System.lineSeparator() +
+                "M=M+1" + System.lineSeparator();
+        Assert.assertEquals(expected, res);
+    }
+
+
 }
