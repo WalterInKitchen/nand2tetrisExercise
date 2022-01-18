@@ -10,24 +10,16 @@ import java.nio.charset.StandardCharsets;
 public class JackTokenizerImplTest {
     @Test
     public void whenWhileThenWhileSymbol() {
-        String stat = "while";
+        String stat = "while(";
         ByteArrayInputStream byIn = new ByteArrayInputStream(stat.getBytes(StandardCharsets.UTF_8));
         JackTokenizerImpl tokenizer = new JackTokenizerImpl(byIn);
         // while
         Assert.assertTrue(tokenizer.hasMoreTokens());
         tokenizer.advance();
-        Assert.assertEquals(TokenType.SYMBOL, tokenizer.tokenType());
-        Assert.assertEquals("while", tokenizer.symbol());
-        Assert.assertFalse(tokenizer.hasMoreTokens());
-    }
-
-    @Test
-    public void whenLeftBracketThenLeftBracketSymbol() {
-        String stat = "(";
-        ByteArrayInputStream byIn = new ByteArrayInputStream(stat.getBytes(StandardCharsets.UTF_8));
-        JackTokenizerImpl tokenizer = new JackTokenizerImpl(byIn);
-        // (
+        Assert.assertEquals(TokenType.KEYWORD, tokenizer.tokenType());
+        Assert.assertEquals(Keyword.WHILE, tokenizer.keyword());
         Assert.assertTrue(tokenizer.hasMoreTokens());
+
         tokenizer.advance();
         Assert.assertEquals(TokenType.SYMBOL, tokenizer.tokenType());
         Assert.assertEquals("(", tokenizer.symbol());
