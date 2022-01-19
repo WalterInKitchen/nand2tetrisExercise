@@ -11,29 +11,7 @@ public class JackTokenizerImpl implements JackTokenizer {
     private String tokenString;
     private Integer nextNextByte;
 
-    private final Set<String> VALID_KEYWORDS = new HashSet<String>() {{
-        add("class");
-        add("constructor");
-        add("function");
-        add("method");
-        add("filed");
-        add("static");
-        add("var");
-        add("int");
-        add("char");
-        add("boolean");
-        add("void");
-        add("true");
-        add("false");
-        add("null");
-        add("this");
-        add("let");
-        add("do");
-        add("if");
-        add("else");
-        add("while");
-        add("return");
-    }};
+    private static final Set<String> VALID_KEYWORDS = new HashSet<String>();
 
     private Set<Character> VALID_SYMBOLS_START = new HashSet<Character>() {{
         add('{');
@@ -56,6 +34,12 @@ public class JackTokenizerImpl implements JackTokenizer {
         add('=');
         add('~');
     }};
+
+    static {
+        for (Keyword keyword : Keyword.values()) {
+            VALID_KEYWORDS.add(keyword.getStringValue());
+        }
+    }
 
     public JackTokenizerImpl(InputStream ins) {
         this.inputStream = ins;
