@@ -6,8 +6,151 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 public class JackTokenizerImplTest {
+    @Test
+    public void whenLetSentenceThenLetTokens() {
+        String stat = "let name = 1000; ";
+        ByteArrayInputStream byIn = new ByteArrayInputStream(stat.getBytes(StandardCharsets.UTF_8));
+        JackTokenizerImpl tokenizer = new JackTokenizerImpl(byIn);
+
+        // let
+        Assert.assertTrue(tokenizer.hasMoreTokens());
+        tokenizer.advance();
+        Assert.assertEquals(TokenType.KEYWORD, tokenizer.tokenType());
+        Assert.assertEquals(Keyword.LET, tokenizer.keyword());
+        Assert.assertTrue(tokenizer.hasMoreTokens());
+        // name
+        Assert.assertTrue(tokenizer.hasMoreTokens());
+        tokenizer.advance();
+        Assert.assertEquals(TokenType.IDENTIFIER, tokenizer.tokenType());
+        Assert.assertEquals("name", tokenizer.identifier());
+        Assert.assertTrue(tokenizer.hasMoreTokens());
+        // =
+        Assert.assertTrue(tokenizer.hasMoreTokens());
+        tokenizer.advance();
+        Assert.assertEquals(TokenType.SYMBOL, tokenizer.tokenType());
+        Assert.assertEquals("=", tokenizer.symbol());
+        Assert.assertTrue(tokenizer.hasMoreTokens());
+        // 1000
+        Assert.assertTrue(tokenizer.hasMoreTokens());
+        tokenizer.advance();
+        Assert.assertEquals(TokenType.INTEGER_CONST, tokenizer.tokenType());
+        Assert.assertEquals(new Integer(1000), tokenizer.intVal());
+        Assert.assertTrue(tokenizer.hasMoreTokens());
+        // ;
+        Assert.assertTrue(tokenizer.hasMoreTokens());
+        tokenizer.advance();
+        Assert.assertEquals(TokenType.SYMBOL, tokenizer.tokenType());
+        Assert.assertEquals(";", tokenizer.symbol());
+        Assert.assertFalse(tokenizer.hasMoreTokens());
+    }
+
+    @Test
+    public void whenSymbolThenSymbolString() {
+        Map<String, String> symbols = new HashMap<String, String>() {{
+            put("{", "{");
+            put("}", "}");
+            put("(", "(");
+            put(")", ")");
+            put("[", "[");
+            put("]", "]");
+            put(".", ".");
+            put(",", ",");
+            put(";", ";");
+            put("+", "+");
+            put("-", "-");
+            put("*", "*");
+            put("/", "/");
+            put("&", "&");
+            put("|", "|");
+            put("<", "<");
+            put(">", ">");
+            put("=", "=");
+            put("<=", "<=");
+            put(">=", ">=");
+            put("<>", "<>");
+            put("~", "~");
+        }};
+
+        for (Map.Entry<String, String> entry : symbols.entrySet()) {
+            String source = entry.getKey();
+            ByteArrayInputStream byIn = new ByteArrayInputStream(source.getBytes(StandardCharsets.UTF_8));
+            JackTokenizerImpl tokenizer = new JackTokenizerImpl(byIn);
+
+            Assert.assertTrue(tokenizer.hasMoreTokens());
+            tokenizer.advance();
+            Assert.assertEquals(TokenType.SYMBOL, tokenizer.tokenType());
+            Assert.assertEquals(entry.getValue(), tokenizer.symbol());
+            Assert.assertFalse(tokenizer.hasMoreTokens());
+        }
+    }
+
+    @Test
+    public void whenIntegerConstantThenIntegerConstant() {
+        Map<String, Integer> symbols = new HashMap<String, Integer>();
+        for (int i = 0; i <= 32767; i++) {
+            symbols.put(String.valueOf(i), i);
+        }
+
+        for (Map.Entry<String, Integer> entry : symbols.entrySet()) {
+            String source = entry.getKey();
+            ByteArrayInputStream byIn = new ByteArrayInputStream(source.getBytes(StandardCharsets.UTF_8));
+            JackTokenizerImpl tokenizer = new JackTokenizerImpl(byIn);
+
+            Assert.assertTrue(tokenizer.hasMoreTokens());
+            tokenizer.advance();
+            Assert.assertEquals(TokenType.INTEGER_CONST, tokenizer.tokenType());
+            Assert.assertEquals(entry.getValue(), tokenizer.intVal());
+            Assert.assertFalse(tokenizer.hasMoreTokens());
+        }
+    }
+
+    @Test
+    public void whenStringConstThenStringSymbol() {
+        Map<String, String> symbols = new HashMap<String, String>() {{
+            put("\"\"", "");
+            put("\" \"", " ");
+            put("\"abc\"", "abc");
+            put("\"a\nb\nc\"", "abc");
+            put("\"a\r\nb\r\nc\"", "abc");
+        }};
+
+        for (Map.Entry<String, String> entry : symbols.entrySet()) {
+            String source = entry.getKey();
+            ByteArrayInputStream byIn = new ByteArrayInputStream(source.getBytes(StandardCharsets.UTF_8));
+            JackTokenizerImpl tokenizer = new JackTokenizerImpl(byIn);
+
+            Assert.assertTrue(tokenizer.hasMoreTokens());
+            tokenizer.advance();
+            Assert.assertEquals(TokenType.STRING_CONST, tokenizer.tokenType());
+            Assert.assertEquals(entry.getValue(), tokenizer.stringVal());
+            Assert.assertFalse(tokenizer.hasMoreTokens());
+        }
+    }
+
+    @Test
+    public void whenIdentifierThenIdentifierSymbol() {
+        Map<String, String> symbols = new HashMap<String, String>() {{
+            put("name", "name");
+            put("age", "age");
+        }};
+
+        for (Map.Entry<String, String> entry : symbols.entrySet()) {
+            String source = entry.getKey();
+            ByteArrayInputStream byIn = new ByteArrayInputStream(source.getBytes(StandardCharsets.UTF_8));
+            JackTokenizerImpl tokenizer = new JackTokenizerImpl(byIn);
+
+            Assert.assertTrue(tokenizer.hasMoreTokens());
+            tokenizer.advance();
+            Assert.assertEquals(TokenType.IDENTIFIER, tokenizer.tokenType());
+            Assert.assertEquals(entry.getValue(), tokenizer.identifier());
+            Assert.assertFalse(tokenizer.hasMoreTokens());
+        }
+    }
+
     @Test
     public void whenWhileThenWhileKeyWord() {
         String stat = "while(";

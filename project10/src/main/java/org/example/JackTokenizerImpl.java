@@ -9,11 +9,13 @@ public class JackTokenizerImpl implements JackTokenizer {
     private final InputStream inputStream;
     private TokenType tokenType;
     private String tokenString;
+    private Integer intTokeValue;
     private Integer nextNextByte;
+    private String stringTokenValue;
 
     private static final Set<String> VALID_KEYWORDS = new HashSet<String>();
 
-    private Set<Character> VALID_SYMBOLS_START = new HashSet<Character>() {{
+    private final Set<Character> VALID_SYMBOLS_START = new HashSet<Character>() {{
         add('{');
         add('}');
         add('(');
@@ -57,18 +59,58 @@ public class JackTokenizerImpl implements JackTokenizer {
 
     @Override
     public void advance() {
-        Integer nextByte = readNextNotWhiteSpaceByte();
+        Integer nextByte = readFirstNotBlank();
         if (byteIsIdentifierStart(nextByte)) {
             readIdentifierOrKeywordToken(nextByte);
         } else if (byteIsSymbolStart(nextByte)) {
             readSymbolToken(nextByte);
+        } else if (byteIsPartOfIntegerConst(nextByte)) {
+            readIntegerConst(nextByte);
+        } else if (byteIsStringConstBorderCharacter(nextByte)) {
+            readStringConst(nextByte);
         }
     }
 
-    private Integer readNextNotWhiteSpaceByte() {
-        Integer nextByte = readNextByte();
-        while (isByteWhiteSpace(nextByte)) {
-            nextByte = readNextByte();
+    private void readStringConst(Integer byt) {
+        Integer nextByte = readNextByte(false);
+        StringBuilder builder = new StringBuilder();
+        while (!byteIsStringConstBorderCharacter(nextByte)) {
+            char cha = (char) (int) nextByte;
+            nextByte = readNextByte(false);
+            if (cha == '\r' || cha == '\n') {
+                continue;
+            }
+            builder.append(cha);
+        }
+        this.tokenType = TokenType.STRING_CONST;
+        this.stringTokenValue = builder.toString();
+    }
+
+    private boolean byteIsStringConstBorderCharacter(Integer nextByte) {
+        char cha = (char) (int) nextByte;
+        return cha == '"';
+    }
+
+    private void readIntegerConst(Integer bte) {
+        char character = (char) (int) bte;
+        StringBuilder builder = new StringBuilder(String.valueOf(character));
+        Integer nextByte = readNextByte(true);
+        while (byteIsPartOfIntegerConst(nextByte)) {
+            builder.append((char) (int) nextByte);
+            nextByte = readNextByte(true);
+        }
+        this.tokenType = TokenType.INTEGER_CONST;
+        this.intTokeValue = Integer.parseInt(builder.toString());
+    }
+
+    private boolean byteIsPartOfIntegerConst(Integer bte) {
+        return bte >= (int) '0' && bte <= (int) '9';
+    }
+
+    private Integer readFirstNotBlank() {
+        Integer nextByte = readNextByte(false);
+        while (nextByte != null && ((char) (int) nextByte) == ' ') {
+            nextByte = readNextByte(false);
         }
         return nextByte;
     }
@@ -81,7 +123,7 @@ public class JackTokenizerImpl implements JackTokenizer {
     private void readSymbolToken(Integer byt) {
         char character = (char) (int) byt;
         StringBuilder builder = new StringBuilder(String.valueOf(character));
-        Integer nextByte = readNextByte();
+        Integer nextByte = readNextByte(true);
         char nextChar = (char) (int) nextByte;
         switch (character) {
             case '<':
@@ -112,10 +154,10 @@ public class JackTokenizerImpl implements JackTokenizer {
 
     private void readIdentifierOrKeywordToken(Integer byt) {
         StringBuilder builder = new StringBuilder(String.valueOf((char) (int) byt));
-        Integer nextByte = readNextByte();
+        Integer nextByte = readNextByte(false);
         while (byteIsNotIdentifierEnd(nextByte)) {
             builder.append((char) (int) nextByte);
-            nextByte = readNextByte();
+            nextByte = readNextByte(false);
         }
         putByteBack(nextByte);
         String identifier = builder.toString();
@@ -166,19 +208,19 @@ public class JackTokenizerImpl implements JackTokenizer {
         return nextByte >= (int) 'A' && nextByte <= (int) 'Z';
     }
 
-    private boolean isByteWhiteSpace(Integer byt) {
-        if (byt == (int) ' ') {
+    private boolean isByteWhiteSpace(Integer byt, boolean ignoreSpace) {
+        if (ignoreSpace && byt == (int) ' ') {
             return true;
         }
         return byt == (int) '\n' || byt == (int) '\r' || byt == (int) '\t';
     }
 
-    private Integer readNextByte() {
+    private Integer readNextByte(boolean ignoreSpace) {
         int res = 0;
         try {
             res = this.nextNextByte;
             this.nextNextByte = this.inputStream.read();
-            if (isByteWhiteSpace(this.nextNextByte)) {
+            if (isByteWhiteSpace(this.nextNextByte, ignoreSpace)) {
                 this.nextNextByte = this.inputStream.read();
             }
             return res;
@@ -204,16 +246,16 @@ public class JackTokenizerImpl implements JackTokenizer {
 
     @Override
     public String identifier() {
-        return null;
+        return this.tokenString;
     }
 
     @Override
     public Integer intVal() {
-        return null;
+        return this.intTokeValue;
     }
 
     @Override
     public String stringVal() {
-        return null;
+        return this.stringTokenValue;
     }
 }
