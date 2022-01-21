@@ -3,6 +3,7 @@ package org.example;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Set;
 
 public class JackTokenizerImpl implements JackTokenizer {
@@ -10,10 +11,10 @@ public class JackTokenizerImpl implements JackTokenizer {
     private TokenType tokenType;
     private String tokenString;
     private Integer intTokeValue;
-    private Integer nextNextByte;
     private String stringTokenValue;
 
-    private static final Set<String> VALID_KEYWORDS = new HashSet<String>();
+    private final LinkedList<Integer> NEXT_BYTE_QUEUE = new LinkedList<>();
+    private static final Set<String> VALID_KEYWORDS = new HashSet<>();
 
     private final Set<Character> VALID_SYMBOLS_START = new HashSet<Character>() {{
         add('{');
@@ -46,7 +47,8 @@ public class JackTokenizerImpl implements JackTokenizer {
     public JackTokenizerImpl(InputStream ins) {
         this.inputStream = ins;
         try {
-            this.nextNextByte = this.inputStream.read();
+            int next = this.inputStream.read();
+            this.NEXT_BYTE_QUEUE.addLast(next);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -54,7 +56,7 @@ public class JackTokenizerImpl implements JackTokenizer {
 
     @Override
     public boolean hasMoreTokens() {
-        return this.nextNextByte >= 0;
+        return !this.NEXT_BYTE_QUEUE.isEmpty();
     }
 
     @Override
@@ -72,11 +74,17 @@ public class JackTokenizerImpl implements JackTokenizer {
     }
 
     private void readStringConst(Integer byt) {
-        Integer nextByte = readNextByte(false);
+        Integer nextByte = readNextByte();
+        if (nextByte == null) {
+            return;
+        }
         StringBuilder builder = new StringBuilder();
         while (!byteIsStringConstBorderCharacter(nextByte)) {
             char cha = (char) (int) nextByte;
-            nextByte = readNextByte(false);
+            nextByte = readNextByte();
+            if (nextByte == null) {
+                return;
+            }
             if (cha == '\r' || cha == '\n') {
                 continue;
             }
@@ -94,11 +102,12 @@ public class JackTokenizerImpl implements JackTokenizer {
     private void readIntegerConst(Integer bte) {
         char character = (char) (int) bte;
         StringBuilder builder = new StringBuilder(String.valueOf(character));
-        Integer nextByte = readNextByte(true);
-        while (byteIsPartOfIntegerConst(nextByte)) {
+        Integer nextByte = readNextByte();
+        while (nextByte != null && byteIsPartOfIntegerConst(nextByte)) {
             builder.append((char) (int) nextByte);
-            nextByte = readNextByte(true);
+            nextByte = readNextByte();
         }
+        putByteBack(nextByte);
         this.tokenType = TokenType.INTEGER_CONST;
         this.intTokeValue = Integer.parseInt(builder.toString());
     }
@@ -108,9 +117,15 @@ public class JackTokenizerImpl implements JackTokenizer {
     }
 
     private Integer readFirstNotBlank() {
-        Integer nextByte = readNextByte(false);
-        while (nextByte != null && ((char) (int) nextByte) == ' ') {
-            nextByte = readNextByte(false);
+        Integer nextByte = readNextByte();
+        if (nextByte == null) {
+            return -1;
+        }
+        while (!byteIsNotBlank(nextByte)) {
+            nextByte = readNextByte();
+            if (nextByte == null) {
+                return -1;
+            }
         }
         return nextByte;
     }
@@ -123,29 +138,77 @@ public class JackTokenizerImpl implements JackTokenizer {
     private void readSymbolToken(Integer byt) {
         char character = (char) (int) byt;
         StringBuilder builder = new StringBuilder(String.valueOf(character));
-        Integer nextByte = readNextByte(true);
+        Integer nextByte = readNextByte();
+        if (nextByte == null) {
+            this.tokenType = TokenType.SYMBOL;
+            this.tokenString = builder.toString();
+            return;
+        }
         char nextChar = (char) (int) nextByte;
+        boolean nextCharIsValid = false;
         switch (character) {
             case '<':
                 if (nextChar == '=') {
                     builder.append('=');
+                    nextCharIsValid = true;
                 } else if (nextChar == '>') {
                     builder.append('>');
+                    nextCharIsValid = true;
+                }
+                break;
+            case '+': {
+                if (nextChar == '+') {
+                    builder.append('+');
+                    nextCharIsValid = true;
+                    break;
+                }
+                if (nextChar == '=') {
+                    builder.append('=');
+                    nextCharIsValid = true;
+                    break;
+                }
+                break;
+            }
+            case '=':
+                if (nextChar == '=') {
+                    builder.append('=');
+                    nextCharIsValid = true;
                 }
                 break;
             case '>':
-            case '+':
-            case '-':
                 if (nextChar == '=') {
                     builder.append('=');
+                    nextCharIsValid = true;
                 }
                 break;
-            default: {
-
-            }
+            case '-':
+                if (nextByte == '-') {
+                    builder.append('-');
+                    nextCharIsValid = true;
+                    break;
+                }
+                if (nextChar == '=') {
+                    builder.append('=');
+                    nextCharIsValid = true;
+                    break;
+                }
+                break;
+            default:
+                break;
+        }
+        if (!nextCharIsValid && byteIsNotBlank(nextByte)) {
+            putByteBack(nextByte);
         }
         this.tokenType = TokenType.SYMBOL;
         this.tokenString = builder.toString();
+    }
+
+    private boolean byteIsNotBlank(Integer nextByte) {
+        if (nextByte == null) {
+            return false;
+        }
+        char chr = (char) (int) nextByte;
+        return !(chr == ' ' || chr == '\t' || chr == '\r' || chr == '\n');
     }
 
     private boolean byteIsSymbolStart(Integer nextByte) {
@@ -154,10 +217,10 @@ public class JackTokenizerImpl implements JackTokenizer {
 
     private void readIdentifierOrKeywordToken(Integer byt) {
         StringBuilder builder = new StringBuilder(String.valueOf((char) (int) byt));
-        Integer nextByte = readNextByte(false);
+        Integer nextByte = readNextByte();
         while (byteIsNotIdentifierEnd(nextByte)) {
             builder.append((char) (int) nextByte);
-            nextByte = readNextByte(false);
+            nextByte = readNextByte();
         }
         putByteBack(nextByte);
         String identifier = builder.toString();
@@ -170,7 +233,10 @@ public class JackTokenizerImpl implements JackTokenizer {
     }
 
     private void putByteBack(Integer nextByte) {
-        this.nextNextByte = nextByte;
+        if (nextByte == null) {
+            return;
+        }
+        this.NEXT_BYTE_QUEUE.addFirst(nextByte);
     }
 
     private boolean isIdentifierIsKeyWord(String identifier) {
@@ -178,6 +244,9 @@ public class JackTokenizerImpl implements JackTokenizer {
     }
 
     private boolean byteIsNotIdentifierEnd(Integer nextByte) {
+        if (nextByte == null) {
+            return false;
+        }
         if (isByteAlphabet(nextByte)) {
             return true;
         }
@@ -202,36 +271,41 @@ public class JackTokenizerImpl implements JackTokenizer {
     }
 
     private boolean isByteAlphabet(Integer nextByte) {
+        if (nextByte == null) {
+            return false;
+        }
         if (nextByte >= (int) 'a' && nextByte <= (int) 'z') {
             return true;
         }
         return nextByte >= (int) 'A' && nextByte <= (int) 'Z';
     }
 
-    private boolean isByteWhiteSpace(Integer byt, boolean ignoreSpace) {
-        if (ignoreSpace && byt == (int) ' ') {
-            return true;
-        }
-        return byt == (int) '\n' || byt == (int) '\r' || byt == (int) '\t';
-    }
-
-    private Integer readNextByte(boolean ignoreSpace) {
-        int res = 0;
+    private Integer readNextByte() {
         try {
-            res = this.nextNextByte;
-            this.nextNextByte = this.inputStream.read();
-            if (isByteWhiteSpace(this.nextNextByte, ignoreSpace)) {
-                this.nextNextByte = this.inputStream.read();
+            if (!this.NEXT_BYTE_QUEUE.isEmpty()) {
+                Integer res = this.NEXT_BYTE_QUEUE.removeFirst();
+                int next = this.inputStream.read();
+                if (next < 0) {
+                    return res;
+                }
+                this.NEXT_BYTE_QUEUE.addLast(next);
+                return res;
             }
-            return res;
+            int next = this.inputStream.read();
+            if (next < 0) {
+                return null;
+            }
+            this.NEXT_BYTE_QUEUE.addLast(next);
+            next = this.inputStream.read();
+            if (next < 0) {
+                return null;
+            }
+            this.NEXT_BYTE_QUEUE.addLast(next);
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException("stream error:" + e.getMessage());
         }
-    }
-
-    private TokenType proceedReadToken(int bt) {
-        return null;
+        return this.NEXT_BYTE_QUEUE.removeFirst();
     }
 
     @Override

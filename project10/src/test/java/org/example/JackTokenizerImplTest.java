@@ -1,21 +1,23 @@
 package org.example;
 
 
+import javafx.util.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class JackTokenizerImplTest {
     @Test
     public void whenLetSentenceThenLetTokens() {
-        String stat = "let name = 1000; ";
+        String stat = "let name=1000; ";
         ByteArrayInputStream byIn = new ByteArrayInputStream(stat.getBytes(StandardCharsets.UTF_8));
         JackTokenizerImpl tokenizer = new JackTokenizerImpl(byIn);
-
         // let
         Assert.assertTrue(tokenizer.hasMoreTokens());
         tokenizer.advance();
@@ -49,6 +51,86 @@ public class JackTokenizerImplTest {
     }
 
     @Test
+    public void whenWhileExprThenWhile() {
+        String expr = "int count=0;\n"
+                + "while (count++<100) {\n"
+                + "    System.out.print(count);\n"
+                + "    if(count==50){\n"
+                + "        println(\"we reached the middle\"); \n"
+                + "    }"
+                + "}";
+        List<Pair<TokenType, Object>> expecteds = Arrays.asList(
+                new Pair<>(TokenType.KEYWORD, Keyword.INT),
+                new Pair<>(TokenType.IDENTIFIER, "count"),
+                new Pair<>(TokenType.SYMBOL, "="),
+                new Pair<>(TokenType.INTEGER_CONST, 0),
+                new Pair<>(TokenType.SYMBOL, ";"),
+                new Pair<>(TokenType.KEYWORD, Keyword.WHILE),
+                new Pair<>(TokenType.SYMBOL, "("),
+                new Pair<>(TokenType.IDENTIFIER, "count"),
+                new Pair<>(TokenType.SYMBOL, "++"),
+                new Pair<>(TokenType.SYMBOL, "<"),
+                new Pair<>(TokenType.INTEGER_CONST, 100),
+                new Pair<>(TokenType.SYMBOL, ")"),
+                new Pair<>(TokenType.SYMBOL, "{"),
+                new Pair<>(TokenType.IDENTIFIER, "System"),
+                new Pair<>(TokenType.SYMBOL, "."),
+                new Pair<>(TokenType.IDENTIFIER, "out"),
+                new Pair<>(TokenType.SYMBOL, "."),
+                new Pair<>(TokenType.IDENTIFIER, "print"),
+                new Pair<>(TokenType.SYMBOL, "("),
+                new Pair<>(TokenType.IDENTIFIER, "count"),
+                new Pair<>(TokenType.SYMBOL, ")"),
+                new Pair<>(TokenType.SYMBOL, ";"),
+
+                // if(count==50)
+                new Pair<>(TokenType.KEYWORD, Keyword.IF    ),
+                new Pair<>(TokenType.SYMBOL, "("),
+                new Pair<>(TokenType.IDENTIFIER, "count"),
+                new Pair<>(TokenType.SYMBOL, "=="),
+                new Pair<>(TokenType.INTEGER_CONST, 50),
+                new Pair<>(TokenType.SYMBOL, ")"),
+                // {
+                new Pair<>(TokenType.SYMBOL, "{"),
+                new Pair<>(TokenType.IDENTIFIER, "println"),
+                new Pair<>(TokenType.SYMBOL, "("),
+                new Pair<>(TokenType.STRING_CONST, "we reached the middle"),
+                new Pair<>(TokenType.SYMBOL, ")"),
+                new Pair<>(TokenType.SYMBOL, ";"),
+                new Pair<>(TokenType.SYMBOL, "}"),
+
+                //} end while
+                new Pair<>(TokenType.SYMBOL, "}")
+        );
+        ByteArrayInputStream byIn = new ByteArrayInputStream(expr.getBytes(StandardCharsets.UTF_8));
+        JackTokenizerImpl tokenizer = new JackTokenizerImpl(byIn);
+
+        for (Pair<TokenType, Object> expect : expecteds) {
+            System.out.println(expect.getValue());
+            Assert.assertTrue(tokenizer.hasMoreTokens());
+            tokenizer.advance();
+            Assert.assertEquals(expect.getKey(), tokenizer.tokenType());
+            switch (expect.getKey()) {
+                case KEYWORD:
+                    Assert.assertEquals(expect.getValue(), tokenizer.keyword());
+                    break;
+                case SYMBOL:
+                    Assert.assertEquals(expect.getValue(), tokenizer.symbol());
+                    break;
+                case INTEGER_CONST:
+                    Assert.assertEquals(expect.getValue(), tokenizer.intVal());
+                    break;
+                case STRING_CONST:
+                    Assert.assertEquals(expect.getValue(), tokenizer.stringVal());
+                    break;
+                case IDENTIFIER:
+                    Assert.assertEquals(expect.getValue(), tokenizer.identifier());
+                    break;
+            }
+        }
+    }
+
+    @Test
     public void whenSymbolThenSymbolString() {
         Map<String, String> symbols = new HashMap<String, String>() {{
             put("{", "{");
@@ -61,7 +143,9 @@ public class JackTokenizerImplTest {
             put(",", ",");
             put(";", ";");
             put("+", "+");
+            put("++", "++");
             put("-", "-");
+            put("--", "--");
             put("*", "*");
             put("/", "/");
             put("&", "&");
@@ -69,6 +153,9 @@ public class JackTokenizerImplTest {
             put("<", "<");
             put(">", ">");
             put("=", "=");
+            put("==", "==");
+            put("+=", "+=");
+            put("-=", "-=");
             put("<=", "<=");
             put(">=", ">=");
             put("<>", "<>");
