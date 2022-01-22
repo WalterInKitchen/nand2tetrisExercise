@@ -2,8 +2,10 @@ package org.example;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 
 public class JackTokenizerImpl implements JackTokenizer {
@@ -46,11 +48,9 @@ public class JackTokenizerImpl implements JackTokenizer {
 
     public JackTokenizerImpl(InputStream ins) {
         this.inputStream = ins;
-        try {
-            int next = this.inputStream.read();
-            this.NEXT_BYTE_QUEUE.addLast(next);
-        } catch (IOException e) {
-            e.printStackTrace();
+        Integer next = this.readTokenStart();
+        if (next != null && next >= 0) {
+            this.NEXT_BYTE_QUEUE.addFirst(next);
         }
     }
 
@@ -61,7 +61,7 @@ public class JackTokenizerImpl implements JackTokenizer {
 
     @Override
     public void advance() {
-        Integer nextByte = readFirstNotBlank();
+        Integer nextByte = readTokenStart();
         if (byteIsIdentifierStart(nextByte)) {
             readIdentifierOrKeywordToken(nextByte);
         } else if (byteIsSymbolStart(nextByte)) {
@@ -116,18 +116,71 @@ public class JackTokenizerImpl implements JackTokenizer {
         return bte >= (int) '0' && bte <= (int) '9';
     }
 
-    private Integer readFirstNotBlank() {
+    private Integer readTokenStart() {
+        dropWhiteSpace();
+        dropComments();
+        dropWhiteSpace();
+        return readNextByte();
+    }
+
+    private void dropWhiteSpace() {
         Integer nextByte = readNextByte();
         if (nextByte == null) {
-            return -1;
+            return;
         }
         while (!byteIsNotBlank(nextByte)) {
             nextByte = readNextByte();
             if (nextByte == null) {
-                return -1;
+                return;
             }
         }
-        return nextByte;
+        putByteBack(nextByte);
+    }
+
+    private void dropComments() {
+        Integer nextByte = readNextByte();
+        if (isNotCommentStart(nextByte)) {
+            putByteBack(nextByte);
+            return;
+        }
+        Integer nextNextByte = readNextByte();
+        if (nextNextByte == null) {
+            putByteBack(nextByte);
+            return;
+        }
+        if (!"//".equals(joinBytesToString(Arrays.asList(nextByte, nextNextByte)))) {
+            putByteBack(nextByte);
+            putByteBack(nextNextByte);
+            return;
+        }
+        dropCharUntilNewLine();
+    }
+
+    private void dropCharUntilNewLine() {
+        Integer nextNextByte = readNextByte();
+        while (nextNextByte != null && (char) (int) nextNextByte != '\n') {
+            nextNextByte = readNextByte();
+        }
+    }
+
+    private String joinBytesToString(List<Integer> list) {
+        if (list == null) {
+            return null;
+        }
+        StringBuilder builder = new StringBuilder();
+        list.forEach(it -> builder.append((char) (int) it));
+        return builder.toString();
+    }
+
+    private boolean isNotCommentStart(Integer nextByte) {
+        if (nextByte == null) {
+            return true;
+        }
+        char nextChar = (char) (int) nextByte;
+        if (nextChar != '/') {
+            return true;
+        }
+        return false;
     }
 
     @Override

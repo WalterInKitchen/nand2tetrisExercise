@@ -9,6 +9,7 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,13 +53,15 @@ public class JackTokenizerImplTest {
 
     @Test
     public void whenWhileExprThenWhile() {
-        String expr = "int count=0;\n"
+        String expr = "//this is the start of file\n" +
+                "int count=0;\n"
                 + "while (count++<100) {\n"
-                + "    System.out.print(count);\n"
-                + "    if(count==50){\n"
+                + "    System.out.print(count);   //this is comment \n"
+                + "    if(count==50){//this is another comment\n"
                 + "        println(\"we reached the middle\"); \n"
                 + "    }"
-                + "}";
+                + "}"
+                + "      // this is the end of file";
         List<Pair<TokenType, Object>> expecteds = Arrays.asList(
                 new Pair<>(TokenType.KEYWORD, Keyword.INT),
                 new Pair<>(TokenType.IDENTIFIER, "count"),
@@ -84,7 +87,7 @@ public class JackTokenizerImplTest {
                 new Pair<>(TokenType.SYMBOL, ";"),
 
                 // if(count==50)
-                new Pair<>(TokenType.KEYWORD, Keyword.IF    ),
+                new Pair<>(TokenType.KEYWORD, Keyword.IF),
                 new Pair<>(TokenType.SYMBOL, "("),
                 new Pair<>(TokenType.IDENTIFIER, "count"),
                 new Pair<>(TokenType.SYMBOL, "=="),
@@ -131,8 +134,16 @@ public class JackTokenizerImplTest {
     }
 
     @Test
+    public void whenCommentThenReturnNull() {
+        String source = "   // this is a comment";
+        ByteArrayInputStream byIn = new ByteArrayInputStream(source.getBytes(StandardCharsets.UTF_8));
+        JackTokenizerImpl tokenizer = new JackTokenizerImpl(byIn);
+        Assert.assertFalse(tokenizer.hasMoreTokens());
+    }
+
+    @Test
     public void whenSymbolThenSymbolString() {
-        Map<String, String> symbols = new HashMap<String, String>() {{
+        Map<String, String> symbols = new LinkedHashMap<String, String>() {{
             put("{", "{");
             put("}", "}");
             put("(", "(");
