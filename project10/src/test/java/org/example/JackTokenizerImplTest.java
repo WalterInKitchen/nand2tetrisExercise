@@ -53,12 +53,18 @@ public class JackTokenizerImplTest {
 
     @Test
     public void whenWhileExprThenWhile() {
-        String expr = "//this is the start of file\n" +
+        String expr = "/** \n" +
+                "       this is a multiLine comment\n" +
+                "      **/ " +
+                "//this is comment \n" +
                 "int count=0;\n"
                 + "while (count++<100) {\n"
                 + "    System.out.print(count);   //this is comment \n"
-                + "    if(count==50){//this is another comment\n"
+                + "    if(count==50){             //this is another comment\n"
                 + "        println(\"we reached the middle\"); \n"
+                + "         /**\n" +
+                "           * this is then end of while\n" +
+                "           **/\n"
                 + "    }"
                 + "}"
                 + "      // this is the end of file";
@@ -136,6 +142,17 @@ public class JackTokenizerImplTest {
     @Test
     public void whenCommentThenReturnNull() {
         String source = "   // this is a comment";
+        ByteArrayInputStream byIn = new ByteArrayInputStream(source.getBytes(StandardCharsets.UTF_8));
+        JackTokenizerImpl tokenizer = new JackTokenizerImpl(byIn);
+        Assert.assertFalse(tokenizer.hasMoreTokens());
+    }
+
+    @Test
+    public void whenMultiLineCommentsThenReturnNull() {
+        String source = "/**\n" +
+                "this is multiLine comments \n" +
+                "this is multiLine comments \n" +
+                "**/";
         ByteArrayInputStream byIn = new ByteArrayInputStream(source.getBytes(StandardCharsets.UTF_8));
         JackTokenizerImpl tokenizer = new JackTokenizerImpl(byIn);
         Assert.assertFalse(tokenizer.hasMoreTokens());

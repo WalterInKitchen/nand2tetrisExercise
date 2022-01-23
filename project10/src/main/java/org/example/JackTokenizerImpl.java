@@ -2,7 +2,7 @@ package org.example;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -138,19 +138,63 @@ public class JackTokenizerImpl implements JackTokenizer {
     }
 
     private void dropComments() {
-        Integer nextByte = readNextByte();
-        if (isNotCommentStart(nextByte)) {
-            putByteBack(nextByte);
+        tryToDropSingleLineComments();
+        tryToDropMultiLineComments();
+    }
+
+    private void tryToDropMultiLineComments() {
+        List<Integer> bytes = readNextByte(3);
+        String str = joinBytesToString(bytes);
+        if (!"/**".equals(str)) {
+            Collections.reverse(bytes);
+            bytes.forEach(this::putByteBack);
             return;
         }
-        Integer nextNextByte = readNextByte();
-        if (nextNextByte == null) {
-            putByteBack(nextByte);
+        dropCharUntilMatch("**/");
+    }
+
+    private void dropCharUntilMatch(String target) {
+        if (target == null || target.length() == 0) {
             return;
         }
-        if (!"//".equals(joinBytesToString(Arrays.asList(nextByte, nextNextByte)))) {
-            putByteBack(nextByte);
-            putByteBack(nextNextByte);
+        int size = target.length();
+        LinkedList<Integer> bytes = new LinkedList<>();
+        while (true) {
+            Integer nextByte = readNextByte();
+            if (nextByte == null) {
+                return;
+            }
+            bytes.addLast(nextByte);
+            if (bytes.size() > size) {
+                bytes.removeFirst();
+            }
+            if (bytes.size() < size) {
+                continue;
+            }
+            if (target.equals(joinBytesToString(bytes))) {
+                return;
+            }
+        }
+    }
+
+    private List<Integer> readNextByte(int count) {
+        List<Integer> res = new LinkedList<>();
+        for (int i = 0; i < count; i++) {
+            Integer next = readNextByte();
+            if (next == null) {
+                continue;
+            }
+            res.add(next);
+        }
+        return res;
+    }
+
+    private void tryToDropSingleLineComments() {
+        List<Integer> bytes = readNextByte(2);
+        String str = joinBytesToString(bytes);
+        if (!"//".equals(str)) {
+            Collections.reverse(bytes);
+            bytes.forEach(this::putByteBack);
             return;
         }
         dropCharUntilNewLine();
@@ -172,7 +216,7 @@ public class JackTokenizerImpl implements JackTokenizer {
         return builder.toString();
     }
 
-    private boolean isNotCommentStart(Integer nextByte) {
+    private boolean byteIsNotCommentStart(Integer nextByte) {
         if (nextByte == null) {
             return true;
         }
